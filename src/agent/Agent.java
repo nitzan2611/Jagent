@@ -17,9 +17,11 @@ import net.bytebuddy.utility.JavaModule;
 //to create call
 //javac Agent.java & jar cmf manifest.txt ./../../agent.jar Agent.class
 public class Agent {
+	static String filepath="";
 	 public static void premain(String args, Instrumentation instrumentation) {
 	
-
+		 	filepath=args;
+		 	System.out.println(args);
 	        new AgentBuilder.Default()
 	                .with(new AgentBuilder.InitializationStrategy.SelfInjection.Eager())
 	                .type((ElementMatchers.any()))

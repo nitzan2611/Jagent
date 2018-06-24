@@ -5,40 +5,92 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.FileWriter;
+import java.io.InputStream;
 import java.io.PrintWriter;
 import java.io.UnsupportedEncodingException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 
 import net.bytebuddy.asm.Advice;
 
 public class AllMethod {
 
 	
-	 public static PrintWriter writer;
+	public static PrintWriter writer;
+	public static String filename;
+	public static ArrayList<String> arguments;
 	@Advice.OnMethodExit
 	  public static void onExit(@Advice.Return Object method) {
-		writer.println("] ->  "+method);
-		writer.println("\t}");
+		try {
+		writer.println("] ->  "+"...");
+		writer.println("  }");
 		writer.print("}");
 		writer.flush();
 		writer.close();
-		System.out.println("[RETURN VALUE] "+ method);
+		
+		String[] traces = parseTraces(filename);
+		
+		String trace = traces[traces.length-1];
+		
+		removeLastBracket(filename);
+		writer = new PrintWriter(new FileOutputStream( new File(filename),  true ));
 
+		
+		writer.println("  example {");
+		writer.println("    ["+arguments.get(0)+"]");
+		
+		writer.println(traceSeperate(trace));
+		
+		writer.println("  }");
+		
+		writer.print("}");
+		writer.flush();
+		writer.close();
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+		
+		
 	  }
-	 @Advice.OnMethodEnter
+	 public static String traceSeperate(String string) {
+		 try {
+
+		 String res="";
+		 res = string.replace("Optional","");
+		 res = res.substring(2, res.length()-3);
+		 String[] splited = res.split(",");
+		 String ret="";
+		 for(int i=0;i<splited.length-1;i++)
+		 {
+			 ret+="    -> "+splited[i].replace(" "," ")+"\n";
+		 }
+		 return ret;
+
+		 }
+		 catch(Exception e)
+		 {
+			 e.printStackTrace();
+			 return "";
+		 }
+	}
+	@Advice.OnMethodEnter
 	 	public static void getValue(@Advice.Origin String method, @Advice.AllArguments Object[] para) throws FileNotFoundException, UnsupportedEncodingException
 	 	{
 		 try {
+	     arguments = new ArrayList<String>();
 		 File file = new File("jAgentBenchmarks");
 		 file.mkdir();
 		 String[] updatedMethod = updateMethod(method);
-		 String filename= "jAgentBenchmarks\\"+updatedMethod[1]+".spec";
+		 filename= "jAgentBenchmarks\\"+updatedMethod[1]+".spec";
 		 if(!initedFile(filename))
 		 {
-			 System.out.println("[NOT_INITED]");
 			 writer = new PrintWriter(new FileOutputStream( new File(filename),  true ));
 			 writer.println("//INIT");
 			 writer.print(updatedMethod[1]+"(");
@@ -47,32 +99,41 @@ public class AllMethod {
 			*/	        
 			char name ='a';
 			for (int i = 0; i < para.length; i++) {
+				String myparam = makeparams(""+name++,para[i].getClass().getSimpleName());
 				if(i<para.length-1)
-					writer.print(makeparams(""+name++,para[i].getClass().getSimpleName())+",");
+					writer.print(myparam+",");
 				else
-					writer.print(makeparams(""+name++,para[i].getClass().getSimpleName()));
+					writer.print(myparam);
 			}
 			writer.print(")->");
 			writer.println("(res:"+updatedMethod[0].replaceAll("java.lang.", "")+"){");
-			writer.println("[INSERT CODE HERE]");
-			writer.print("}");
+			writer.println(readCode(Agent.filepath));
+			writer.println("");
 			
 			writer.flush();
 			writer.close();
 		 }
-
+		 
 		 removeLastBracket(filename);
 		 writer = new PrintWriter(new FileOutputStream( new File(filename),  true ));
-		 writer.println("\ttest example {");
-		 writer.print("\t\t[");
+		 writer.println("  test example {");
+		 writer.print("    [");
 		 char name ='a';
+		 String res_param="";
 		 for (int i = 0; i < para.length; i++) {
+			String paraname = name++ +"=="+(para[i]);
 		 	if(i<para.length-1)
-		 		writer.print(name++ +"=="+(para[i])+",");
+		 	{
+		 		res_param+=paraname+"&&";
+		 		writer.print(paraname+"&&");
+		 	}
 		 	else
-		 		writer.print(name++ +"=="+(para[i]));
+		 	{
+		 		res_param+=paraname;
+		 		writer.print(paraname);
+		 	}
 		 }
-
+		 arguments.add(res_param);
 		 }
 		 catch(Exception e)
 		 {
@@ -80,6 +141,33 @@ public class AllMethod {
 		 }
 		 
 	 	}
+	public static String[] parseTraces(String filename) {
+		try {
+		String command = "java -jar trace_gen.jar "+filename;
+		Process proc = Runtime.getRuntime().exec(command);
+		InputStream in = proc.getInputStream();
+		System.out.println(new String(proc.getErrorStream().readAllBytes()));
+		String s =new String(in.readAllBytes());
+		String[] arr = s.split("\n");
+		return arr;
+		}
+		catch(Exception e)
+		{
+			return null;
+		}
+	}
+	public static String readCode(String filepath) {
+		try {
+		 byte[] encoded = Files.readAllBytes(Paths.get(filepath));
+		 String s =  new String(encoded, StandardCharsets.UTF_8);
+		 return s;
+		}
+		catch(Exception e)
+		{
+			e.printStackTrace();
+			return "[CODE NOT FOUND]";
+		}
+	}
 	public static String makeparams(String c, String class1) {
 		boolean ismut=false;
 		HashMap<String,String> map = new HashMap<>();
