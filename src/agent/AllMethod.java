@@ -63,9 +63,8 @@ public class AllMethod {
 		 try {
 
 		 String res="";
-		 res = string.replace("Optional","");
-		 res = res.substring(2, res.length()-3);
-		 String[] splited = res.split(",");
+		 String[] splited = string.split(",");
+		 System.out.println(Arrays.toString(splited));
 		 String ret="";
 		 for(int i=0;i<splited.length-1;i++)
 		 {
