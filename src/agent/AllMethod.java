@@ -64,9 +64,8 @@ public class AllMethod {
 
 		 String res="";
 		 String[] splited = string.split(",");
-		 System.out.println(Arrays.toString(splited));
 		 String ret="";
-		 for(int i=0;i<splited.length-1;i++)
+		 for(int i=0;i<splited.length-2;i++)
 		 {
 			 ret+="    -> "+splited[i].replace(" "," ")+"\n";
 		 }
@@ -142,7 +141,7 @@ public class AllMethod {
 	 	}
 	public static String[] parseTraces(String filename) {
 		try {
-		String command = "java -jar trace_gen.jar "+filename;
+		String command = "java -jar trace_gen.jar "+filename+" "+Agent.ignorePath;
 		Process proc = Runtime.getRuntime().exec(command);
 		InputStream in = proc.getInputStream();
 		System.out.println(new String(proc.getErrorStream().readAllBytes()));
@@ -152,6 +151,7 @@ public class AllMethod {
 		}
 		catch(Exception e)
 		{
+			e.printStackTrace();
 			return null;
 		}
 	}
