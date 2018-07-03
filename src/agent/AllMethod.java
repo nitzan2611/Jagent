@@ -153,10 +153,10 @@ Premain-Class: agent.Agent
 		String command = "java -jar trace_gen.jar "+filename+" "+Agent.ignorePath;
 		Process proc = Runtime.getRuntime().exec(command);
 		InputStream in = proc.getInputStream();
-		System.out.println(new String(proc.getErrorStream().readAllBytes()));
-		String s =new String(in.readAllBytes());
-		String[] arr = s.split("\n");
-		return arr;
+		//System.out.println(new String(proc.getErrorStream().readAllBytes()));
+		//String s =new String(in.readAllBytes());
+		//String[] arr = s.split("\n");
+		return new String[1];
 		}
 		catch(Exception e)
 		{

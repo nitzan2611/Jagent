@@ -1,9 +1,11 @@
 package agent;
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.PrintStream;
 import java.lang.instrument.ClassFileTransformer;
 import java.lang.instrument.IllegalClassFormatException;
@@ -20,6 +22,16 @@ import net.bytebuddy.dynamic.DynamicType.Builder;
 import net.bytebuddy.implementation.FixedValue;
 import net.bytebuddy.matcher.ElementMatchers;
 import net.bytebuddy.utility.JavaModule;
+
+
+//todo
+
+//get bytecode of method with @checker
+//decompile bytecode to jimple
+// for each jimple line we need to add add print it and the state after it
+// compile jimple to bytecode
+//replace original bytecode with the new bytecode
+
 //to create call
 //javac Agent.java & jar cmf manifest.txt ./../../agent.jar Agent.class
 public class Agent {
@@ -37,22 +49,13 @@ public class Agent {
 	 */
 	public static void premain(String args, Instrumentation instrumentation) {
 	
+		    instrumentation.addTransformer(new transformer());    // this creates the code in the spec file
+	    	filepath="garb/code.txt";
+	    	ignorePath=args;
 
-		    if(args.contains(","))
-		    {
-		    	String[] arguments = args.split(",");
-			 	filepath=arguments[0];
-			 	ignorePath=arguments[1];    	
-		    }
-		    else {
-			    instrumentation.addTransformer(new transformer());    // this creates the code in the spec file
-		    	filepath="garb/code.txt";
-		    	ignorePath=args;
-		    }
-		    
 		    //this allows the methods in AllMethod.java to intercept method calls and method exit
 		    //Annoted with @checker
-	        new AgentBuilder.Default()
+	      /*  new AgentBuilder.Default()
 	                .with(new AgentBuilder.InitializationStrategy.SelfInjection.Eager())
 	                .type((ElementMatchers.any()))
 	                .transform((builder, typeDescription, classLoader, module) -> builder
@@ -61,7 +64,7 @@ public class Agent {
 	                        //  .intercept(FixedValue.value("Hello World ByteBuddy!"))
 
 	                ).installOn(instrumentation);
-	
+	*/
 	         
 	 }
 }
@@ -87,20 +90,85 @@ class transformer implements ClassFileTransformer
          !className.startsWith("org"))
      {
        System.out.println("Dumping: " + className);
-
        // Replace all separator charactors
        String classNameWithoutEnd = className.replaceAll("/", "#");
-       String newName = className.replaceAll("/", "#") + ".class";
+       String classFileName = className.replaceAll("/", "#") + ".class";
        try
        {
-    	 new File("garb").mkdir();
-    	 //dump class file into garb/xxx.class
-         FileOutputStream fos = new FileOutputStream("garb/"+newName);
+    	 //dump class file into xxx.class
+         FileOutputStream fos = new FileOutputStream(classFileName);
          fos.write(classfileBuffer);
          fos.close();
+         System.out.println("AAAA");
+         //convert class to jimple
+ 		 String command = String.format("java -cp sootclasses-trunk-jar-with-dependencies.jar soot.Main -cp . -pp %s -d garb -f J\r\n",classNameWithoutEnd);
+ 		 System.out.println(command);
+ 		 System.out.println(ExecuteCommand(command));
+ 		 String handledJimple = "garb\\"+classNameWithoutEnd+".jimple";
+ 		 concatToJimple(handledJimple);//TODO 1
+ 		 byte[] a = compileJimpleToByteCode(handledJimple);
+ 		 
+
          
-         //convert xxx.class to xxx.java
-         String command = "java -jar fernflower.jar "+"garb/"+newName +" garb";
+       }
+       catch(Exception e)
+       {
+    	   e.printStackTrace();
+       }
+     }
+   }
+   // We are not modifying the bytecode in anyway, so return it as-is
+   return classfileBuffer;
+ }
+
+
+/**
+ * MATAN! :)
+ * @param handledJimple - relative path to jimple text file that needs to be compiled
+ * @return compiled byte code of the jimple file 
+ */
+private byte[] compileJimpleToByteCode(String handledJimple) {
+	// TODO Auto-generated method stub
+	return null;
+}
+
+
+
+private void concatToJimple(String handledJimple) {
+	// TODO Auto-generated method stub
+	
+}
+
+
+
+private String ExecuteCommand(String command) throws IOException {
+	try {
+		Process proc = Runtime.getRuntime().exec(command);
+		BufferedReader in = new BufferedReader(new InputStreamReader(proc.getErrorStream()));
+		String err ="";
+		String line;
+		while ((line = in.readLine()) != null) {
+			err+=line;
+		}
+		System.out.println(err);
+		in = new BufferedReader(new InputStreamReader(proc.getInputStream()));
+		String out ="";
+		while ((line = in.readLine()) != null) {
+			out+=line;
+		}
+		return out;
+	}
+	catch(Exception e)
+	{
+		e.printStackTrace();
+	}
+	return "";
+}
+
+}
+
+/*
+ String command = "java -jar fernflower.jar "+"garb/"+classFileName +" garb";
 
          Process proc = Runtime.getRuntime().exec(command);
  		 String s = new String(Files.readAllBytes(Paths.get("garb/"+classNameWithoutEnd+".java")));
@@ -112,73 +180,6 @@ class transformer implements ClassFileTransformer
        }
        catch (Exception ex)
        {
-         System.out.println("Exception while writing: " + newName);
+         System.out.println("Exception while writing: " + classFileName);
        } 
-     }
-   }
-   // We are not modifying the bytecode in anyway, so return it as-is
-   return classfileBuffer;
- }
-
-private String removeEqual(String afterParse) {
-	int index = afterParse.indexOf("-=");
-	while (index >= 0) {
-	    afterParse = replaceSign(afterParse,index,"-");
-	    index = afterParse.indexOf("-=", index + 1);
-	}	
-	index = afterParse.indexOf("+=");
-	while (index >= 0) {
-	    afterParse = replaceSign(afterParse,index,"+");
-		index = afterParse.indexOf("+=", index + 1);
-	}
-	return afterParse;		
-}
-private String replaceSign(String afterParse, int index, String string) {
-	
-	int enter = afterParse.lastIndexOf("\n", index);
-	int exit = afterParse.indexOf("\n", index);
-	if(enter>0 && exit>0)
-	{
-		System.out.println("THIS IS GO "+enter+" "+exit+": "+afterParse.substring(enter, exit));
-		String line = afterParse.substring(enter,exit);
-		String[] assignment = line.split(string+"=");
-		String left  = assignment[0];
-		String right = assignment[1];
-		String newline = left +"="+left+string+right;
-		return afterParse.replace(line,newline.replace("\n","").replace("\t","").replace(" ", ""));
-	}
-	return afterParse;
-}
-/**
- * Parses only the annoted method body from the java class
- * @author Nitzan Farhi
- * @param s
- * @return
  */
-private String parseChecker(String s) {
-	int locA=s.indexOf("@checker");
-	int loc=locA;
-	while(s.charAt(loc)!='{') loc+=1;
-	loc+=1;
-	locA=loc;
-	/*int parnNum=1;
-	while(parnNum!=0)
-	{
-		if(s.charAt(loc)=='{')
-			parnNum+=1;
-		else if(s.charAt(loc)=='}')
-			parnNum-=1;
-		loc+=1;
-	}
-	int locB=loc-1;
-	*/
-	
-	int locB = s.indexOf("return",locA);
-	int enterOfReturn = s.indexOf("\n", locB);
-	String ass = s.substring(locB,enterOfReturn).split("return ")[1];
-	
-	return s.substring(locA,locB)+"\n	res = "+ass+"\n";
-}
-}
-
-;
