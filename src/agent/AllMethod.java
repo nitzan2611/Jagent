@@ -20,45 +20,53 @@ import net.bytebuddy.asm.Advice;
 
 public class AllMethod {
 
+	/*
+Manifest-Version: 1.0
+Created-By: 1.5.0_18 (Sun Microsystems Inc.)
+Premain-Class: agent.Agent
+
+	 */
 	
 	public static PrintWriter writer;
 	public static String filename;
 	public static ArrayList<String> arguments;
+	/**
+	 * Finishes writing the current test example and adds a new example
+	 * @author Nitzan Farhi
+	 * @param returned value from method
+	 */
 	@Advice.OnMethodExit
 	  public static void onExit(@Advice.Return Object method) {
 		try {
-		writer.println("] ->  "+"...");
+		writer.println("] ->  "+"...");//close last example
 		writer.println("  }");
 		writer.print("}");
 		writer.flush();
 		writer.close();
 		
-		String[] traces = parseTraces(filename);
+		String[] traces = parseTraces(filename); //get all traces
 		
-		String trace = traces[traces.length-1];
+		String trace = traces[traces.length-1];  //get the last example's trace (of which we just closed)
 		
-		removeLastBracket(filename);
+		removeLastBracket(filename); //removes last char ('}') from filename
 		writer = new PrintWriter(new FileOutputStream( new File(filename),  true ));
 
-		
+		//writes the trace to the file
 		writer.println("  example {");
-		writer.println("    ["+arguments.get(0)+"]");
-		
+		writer.println("    ["+arguments.get(0)+"]");		
 		writer.println(traceSeperate(trace));
-		
 		writer.println("  }");
 		
 		writer.print("}");
 		writer.flush();
 		writer.close();
 		} catch (Exception e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 		
-		
-		
+
 	  }
+	//add traces rows into final output
 	 public static String traceSeperate(String string) {
 		 try {
 
@@ -86,16 +94,17 @@ public class AllMethod {
 		 File file = new File("jAgentBenchmarks");
 		 file.mkdir();
 		 String[] updatedMethod = updateMethod(method);
+		 //we will create a file appropiate for this method
 		 filename= "jAgentBenchmarks\\"+updatedMethod[1]+".spec";
+		 // if the file wasn't initialized before we initialize it
 		 if(!initedFile(filename))
 		 {
 			 writer = new PrintWriter(new FileOutputStream( new File(filename),  true ));
-			 writer.println("//INIT");
-			 writer.print(updatedMethod[1]+"(");
-			/*This is use for get class of parameters to get
-			*an idea what we can do using this advice
-			*/	        
+			 writer.println("//INIT"); //this is how we signal the method was created
+			 writer.print(updatedMethod[1]+"("); //here we insert the method name
+			 	
 			char name ='a';
+			//here we put the params
 			for (int i = 0; i < para.length; i++) {
 				String myparam = makeparams(""+name++,para[i].getClass().getSimpleName());
 				if(i<para.length-1)
